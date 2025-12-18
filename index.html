@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma Concilio - Gestión de Informes</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- jQuery (requerido para Luckysheet) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Luckysheet - Full Excel Interface -->
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/plugins/css/pluginsCss.css' />
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/plugins/plugins.css' />
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/css/luckysheet.css' />
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/assets/iconfont/iconfont.css' />
+    <script src="https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/plugins/js/plugin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luckysheet@latest/dist/luckysheet.umd.js"></script>
+</head>
+
+<body>
+    <div id="toast-container"></div>
+
+    <!-- LOGIN SECTION -->
+    <section id="login-section" class="active-section">
+        <div class="login-container">
+            <div class="login-card glass-effect">
+                <div class="logo-area">
+                    <i class="fa-solid fa-church fa-3x"></i>
+                    <h1>Concilio Cristiano</h1>
+                    <p>Plataforma de Gestión de Informes</p>
+                </div>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="email">Correo Electrónico</label>
+                        <input type="email" id="email" placeholder="iglesia@concilio.com" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Contraseña</label>
+                        <input type="password" id="password" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                </form>
+                <p id="login-error" class="error-msg hidden">Credenciales incorrectas</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ADMIN PANEL -->
+    <section id="admin-panel" class="hidden-section">
+        <nav class="navbar glass-effect">
+            <div class="nav-brand">Admin Panel</div>
+            <div class="nav-timer" id="global-timer">Cierre en: --d --h --m</div>
+            <div class="nav-user">
+                <span>Administrador</span>
+                <button id="admin-logout" class="btn-small btn-danger"><i
+                        class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </nav>
+
+        <div class="dashboard-container">
+            <aside class="sidebar glass-effect">
+                <ul>
+                    <li class="active" onclick="showAdminTab('dashboard')"><i class="fa-solid fa-chart-pie"></i> Resumen
+                    </li>
+                    <li onclick="showAdminTab('usuarios-conectados')"><i class="fa-solid fa-users"></i> Usuarios
+                        Conectados</li>
+                    <li onclick="showAdminTab('informes')"><i class="fa-solid fa-file-invoice"></i> Informes</li>
+                    <li onclick="showAdminTab('soportes')"><i class="fa-solid fa-paperclip"></i> Soportes</li>
+                    <li onclick="showAdminTab('validaciones')"><i class="fa-solid fa-calendar-check"></i> Validaciones
+                    </li>
+                    <li onclick="showAdminTab('auditoria')"><i class="fa-solid fa-shield-halved"></i> Auditoría</li>
+                    <li onclick="showAdminTab('config')"><i class="fa-solid fa-gear"></i> Configuración</li>
+                </ul>
+            </aside>
+
+            <main class="main-content">
+
+                <!-- ========================================== -->
+                <!-- PANEL DE COLABORACIÓN EN TIEMPO REAL -->
+                <!-- ========================================== -->
+                <div id="admin-tab-usuarios-conectados" class="tab-content">
+                    <h2><i class="fa-solid fa-users"></i> Usuarios Conectados y Actividad</h2>
+
+                    <div class="realtime-grid">
+                        <!-- Usuarios Conectados -->
+                        <div class="card glass-effect">
+                            <h3>👥 Usuarios Conectados</h3>
+                            <div id="usuarios-conectados-list" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Se llena dinámicamente -->
+                            </div>
+                        </div>
+
+                        <!-- Actividad Reciente -->
+                        <div class="card glass-effect">
+                            <h3>📊 Actividad Reciente</h3>
+                            <div id="actividad-reciente-list" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Se llena dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Tab -->
+                <div id="admin-tab-dashboard" class="tab-content active">
+                    <div class="stats-grid">
+                        <div class="stat-card glass-effect">
+                            <h3>Cumplimiento Global</h3>
+                            <div id="global-progress" class="big-number">0%</div>
+                        </div>
+                        <div class="stat-card glass-effect">
+                            <h3>Informes Recibidos</h3>
+                            <span class="big-number" id="total-reports">0/396</span>
+                        </div>
+                        <div class="stat-card glass-effect">
+                            <h3>Plataforma</h3>
+                            <span class="status-badge" id="platform-status-badge">ABIERTA</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informes Tab -->
+                <div id="admin-tab-informes" class="tab-content">
+                    <div class="glass-effect" style="padding: 20px; margin-bottom: 15px;">
+                        <input type="text" id="search-reports" placeholder="Buscar iglesia..."
+                            style="width: auto; display: inline-block; margin-right: 10px;">
+                        <select id="filter-year" style="width: auto; display: inline-block; margin-right: 10px;">
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                        </select>
+                        <select id="filter-status" style="width: auto; display: inline-block;">
+                            <option value="all">Todos</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="revisado">Revisados</option>
+                        </select>
+                    </div>
+                    <div class="table-container glass-effect">
+                        <table class="table-clean">
+                            <thead>
+                                <tr>
+                                    <th>Iglesia</th>
+                                    <th>Fecha Subida</th>
+                                    <th>Archivo</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-reports-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Soportes Tab -->
+                <div id="admin-tab-soportes" class="tab-content">
+                    <div class="glass-effect" style="padding: 20px;">
+                        <h3>Revisión de Soportes</h3>
+                        <div id="admin-soportes-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Validaciones Tab -->
+                <div id="admin-tab-validaciones" class="tab-content">
+                    <div class="glass-effect" style="padding: 20px;">
+                        <h3>Validaciones Mensuales por Iglesia</h3>
+                        <p class="text-muted">Resumen de meses validados (Caja/Gasto) para cada iglesia</p>
+                        <div id="church-validations-grid" style="margin-top: 20px;"></div>
+                    </div>
+                </div>
+
+                <!-- Auditoria Tab -->
+                <div id="admin-tab-auditoria" class="tab-content">
+                    <div class="table-container glass-effect">
+                        <table class="table-clean">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Usuario</th>
+                                    <th>Acción</th>
+                                    <th>Detalles</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Config Tab -->
+                <div id="admin-tab-config" class="tab-content">
+                    <div class="glass-effect" style="padding: 30px;">
+                        <h3>Control de Plataforma</h3>
+                        <div style="margin: 20px 0;">
+                            <label>Estado Manual</label><br>
+                            <button id="btn-toggle-platform" class="btn-primary">Cerrar Plataforma</button>
+                        </div>
+                        <div style="margin: 20px 0;">
+                            <label>Programar Cierre Automático</label><br>
+                            <input type="datetime-local" id="auto-close-date" style="margin-bottom: 10px;">
+                            <button id="btn-save-config" class="btn-secondary">Guardar Configuración</button>
+                        </div>
+                        <div style="margin: 20px 0;">
+                            <label>Mensaje Global a Iglesias</label>
+                            <textarea id="global-message" rows="3" placeholder="Escribe un mensaje..."></textarea>
+                            <button id="btn-send-global" class="btn-secondary">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- NUEVO MÓDULO DE TESORERÍA -->
+                <!-- ========================================== -->
+
+                <!-- Tesorería - Libro Auxiliar Tab -->
+                <div id="admin-tab-tesoreria-libro" class="tab-content">
+                    <h2><i class="fa-solid fa-book"></i> Libro Auxiliar de Caja</h2>
+                    <button class="btn-primary" onclick="openAddMovimientoModal()" style="margin-bottom: 20px;">
+                        <i class="fa-solid fa-plus"></i> Agregar Movimiento
+                    </button>
+                    <div class="treasury-spreadsheet">
+                        <div id="libro-auxiliar-hot"></div>
+                    </div>
+                </div>
+
+                <!-- Tesorería - Categorías Tab -->
+                <div id="admin-tab-tesoreria-categorias" class="tab-content">
+                    <h2><i class="fa-solid fa-tags"></i> Gestión de Categorías</h2>
+                    <button class="btn-primary" onclick="openAddCategoriaModal()" style="margin-bottom: 20px;">
+                        <i class="fa-solid fa-plus"></i> Nueva Categoría
+                    </button>
+                    <div class="glass-effect" style="padding: 20px;">
+                        <h3>Ingresos</h3>
+                        <div id="categorias-ingresos-list"></div>
+                        <h3 style="margin-top: 30px;">Egresos</h3>
+                        <div id="categorias-egresos-list"></div>
+                    </div>
+                </div>
+
+                <!-- Tesorería - Gastos Tab -->
+                <div id="admin-tab-tesoreria-gastos" class="tab-content">
+                    <h2><i class="fa-solid fa-receipt"></i> Control de Gastos</h2>
+                    <p>Módulo en desarrollo</p>
+                </div>
+
+                <!-- Tesorería - Presupuesto Tab -->
+                <div id="admin-tab-tesoreria-presupuesto" class="tab-content">
+                    <h2><i class="fa-solid fa-calculator"></i> Presupuesto</h2>
+                    <p>Módulo en desarrollo</p>
+                </div>
+
+            </main>
+        </div>
+    </section>
+
+    <!-- CHURCH PANEL -->
+    <section id="church-panel" class="hidden-section">
+        <nav class="navbar glass-effect">
+            <div class="nav-brand" id="church-name-display">Iglesia Panel</div>
+            <div class="nav-timer" id="church-timer">Cierre en: --d --h --m</div>
+            <div class="nav-user">
+                <button id="church-logout" class="btn-small btn-danger"><i
+                        class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </nav>
+
+        <div class="dashboard-container">
+            <div class="church-grid">
+                <!-- Upload Report -->
+                <div class="card glass-effect">
+                    <h3><i class="fa-solid fa-cloud-arrow-up"></i> Subir Informe Mensual</h3>
+                    <p class="text-sm text-muted">Formato Excel (.xls, .xlsx) - Máx 15MB</p>
+                    <div class="upload-zone" id="report-dropzone">
+                        <i class="fa-solid fa-file-excel fa-2x"></i>
+                        <p>Arrastra tu archivo aquí o haz clic</p>
+                        <input type="file" id="report-file" accept=".xls,.xlsx" hidden>
+                    </div>
+                    <div id="file-preview" class="hidden mt-2">
+                        <span id="file-name">archivo.xlsx</span>
+                        <button id="btn-upload-report" class="btn-primary w-full mt-2">Enviar Informe</button>
+                    </div>
+                </div>
+
+                <!-- Upload Support -->
+                <div class="card glass-effect">
+                    <h3><i class="fa-solid fa-paperclip"></i> Subir Soportes</h3>
+                    <p class="text-sm text-muted">PDF, Imágenes, Recibos</p>
+                    <select id="support-month">
+                        <option value="">Selecciona Mes</option>
+                        <option value="Enero">Enero</option>
+                        <option value="Febrero">Febrero</option>
+                        <option value="Marzo">Marzo</option>
+                        <option value="Abril">Abril</option>
+                        <option value="Mayo">Mayo</option>
+                        <option value="Junio">Junio</option>
+                        <option value="Julio">Julio</option>
+                        <option value="Agosto">Agosto</option>
+                        <option value="Septiembre">Septiembre</option>
+                        <option value="Octubre">Octubre</option>
+                        <option value="Noviembre">Noviembre</option>
+                        <option value="Diciembre">Diciembre</option>
+                    </select>
+                    <select id="support-type">
+                        <option value="Recibo">Recibo de Caja</option>
+                        <option value="Foto">Foto Actividad</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                    <input type="file" id="support-file">
+                    <button id="btn-upload-support" class="btn-secondary w-full mt-2">Subir Soporte</button>
+                </div>
+
+                <!-- Status Dashboard -->
+                <div class="card glass-effect span-2">
+                    <h3>Estado Anual 2025</h3>
+                    <p class="text-sm text-muted" id="report-subtitle">De acuerdo a tu último informe validado</p>
+                    <div class="months-grid" id="months-status-grid"></div>
+                </div>
+
+                <!-- Messages -->
+                <div class="card glass-effect">
+                    <h3>Mensajes del Admin</h3>
+                    <div id="church-messages-list"></div>
+                </div>
+
+                <!-- Reports History -->
+                <div class="card glass-effect span-2">
+                    <h3><i class="fa-solid fa-clock-rotate-left"></i> Mis Informes Subidos</h3>
+                    <div class="table-container">
+                        <table class="table-clean">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Mes</th>
+                                    <th>Archivo</th>
+                                    <th>Estado</th>
+                                    <th>Comentario Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="church-reports-history"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Supports History -->
+                <div class="card glass-effect">
+                    <h3><i class="fa-solid fa-paperclip"></i> Mis Soportes Subidos</h3>
+                    <div id="church-supports-history"></div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- EDITOR DE IEMA (EXCEL COMPLETO) -->
+                <!-- ========================================== -->
+                <div class="card glass-effect span-2" style="text-align: center; padding: 60px 20px;">
+                    <i class="fa-solid fa-file-excel" style="font-size: 80px; color: #217346; margin-bottom: 20px;"></i>
+                    <h2>Editor de IEMA</h2>
+                    <p class="text-sm text-muted" style="margin-bottom: 30px;">
+                        Gestiona tu Libro Auxiliar de Caja con una interfaz completa tipo Excel
+                    </p>
+                    <button id="btn-open-editor-iema" class="btn-primary" style="font-size: 18px; padding: 15px 40px;">
+                        <i class="fa-solid fa-table"></i> Abrir Editor de IEMA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- MODAL EDITOR DE IEMA (EXCEL FULLSCREEN) -->
+    <!-- ========================================== -->
+    <div id="modal-editor-iema" class="modal-overlay hidden" style="z-index: 10000;">
+        <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; display: flex;">
+            <!-- Encabezado -->
+            <div id="editor-header"
+                style="position: absolute; top: 0; left: 0; right: 0; height: 60px; background: #217346; color: white; padding: 15px 20px; display: none; justify-content: space-between; align-items: center; z-index: 10;">
+                <h3 style="margin: 0; font-size: 18px;">
+                    <i class="fa-solid fa-file-excel"></i> Editor de IEMA - <span id="editor-doc-title">Documento</span>
+                    <span id="observing-indicator"
+                        style="display: none; margin-left: 15px; background: #fbbf24; color: #78350f; padding: 5px 12px; border-radius: 6px; font-size: 14px;">
+                        <i class="fa-solid fa-eye"></i> Siendo observado
+                    </span>
+                </h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Botón Llamar (solo visible para admin observando) -->
+                    <button id="btn-header-call" onclick="callObservingUser()"
+                        style="display: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        <i class="fa-solid fa-video"></i> Llamar
+                    </button>
+                    <button id="btn-editor-chat" onclick="openChurchChat()"
+                        style="display: none; background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                        <i class="fa-solid fa-comments"></i> Chat con Admin
+                    </button>
+                    <button onclick="closeEditorIEMA()"
+                        style="background: transparent; border: none; color: white; font-size: 32px; cursor: pointer; padding: 0 10px; line-height: 1;">&times;</button>
+                </div>
+            </div>
+
+            <!-- Editor (izquierda o completo) -->
+            <div id="editor-container" style="flex: 1; position: relative;">
+                <iframe id="editor-iframe" src="editor/index.html"
+                    style="position: absolute; left: 0; top: 60px; width: 100%; height: calc(100% - 60px); border: none;"
+                    frameborder="0">
+                </iframe>
+            </div>
+
+            <!-- Panel de Chat (derecha, oculto por defecto) -->
+            <div id="chat-sidebar"
+                style="width: 350px; background: white; border-left: 2px solid #e2e8f0; display: none; flex-direction: column;">
+                <div
+                    style="background: #667eea; color: white; padding: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+                    <span>💬 Chat con <span id="chat-target-name">Usuario</span></span>
+                    <button id="btn-call-user" onclick="callObservingUser()" class="btn-video-call"
+                        style="padding: 6px 12px; font-size: 12px;">
+                        <i class="fa-solid fa-video"></i> Llamar
+                    </button>
+                </div>
+                <div id="chat-messages-sidebar" style="flex: 1; overflow-y: auto; padding: 15px; background: #f7fafc;">
+                    <!-- Mensajes aquí -->
+                </div>
+                <div style="padding: 15px; border-top: 1px solid #e2e8f0; background: white;">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="chat-input-sidebar" placeholder="Escribe un mensaje..."
+                            style="flex: 1; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px;"
+                            onkeypress="if(event.key === 'Enter') sendSidebarMessage()">
+                        <button onclick="sendSidebarMessage()" class="btn-primary">
+                            Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Report Viewer Modal -->
+    <div id="viewer-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-effect large-modal">
+            <div class="modal-header">
+                <h3 id="viewer-title">Revisión de Informe</h3>
+                <button class="close-modal" onclick="closeModal('viewer-modal')">&times;</button>
+            </div>
+            <div class="split-view">
+                <div class="viewer-left">
+                    <h4>Vista Previa (Datos Clave)</h4>
+                    <div id="excel-preview-data">
+                        <p>Cargando vista previa...</p>
+                    </div>
+                </div>
+                <div class="viewer-right">
+                    <h4>Acciones de Revisión</h4>
+                    <div style="margin: 15px 0;">
+                        <label>Comentarios / Observaciones</label>
+                        <textarea id="admin-comment" rows="3"></textarea>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-primary" onclick="openMonthValidationModal()">
+                            <i class="fa-solid fa-calendar-check"></i> Validar Meses
+                        </button>
+                        <button class="btn-secondary" onclick="markReportViewed()">Marcar como Visto</button>
+                        <button class="btn-outline" onclick="openSignatureModal()">Firmar y Aprobar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Month Validation Modal -->
+    <div id="month-validation-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-effect">
+            <div class="modal-header">
+                <h3>Validar Meses - <span id="validation-church-name"></span></h3>
+                <button class="close-modal" onclick="closeModal('month-validation-modal')">&times;</button>
+            </div>
+            <div id="validation-grid-container"></div>
+            <button class="btn-primary w-full mt-4" onclick="saveMonthValidations()">Guardar Validaciones</button>
+        </div>
+    </div>
+
+    <!-- Validation Detail Modal (shows church annual status) -->
+    <div id="validation-detail-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-effect" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 id="validation-detail-title">Estado Anual - Iglesia</h3>
+                <button class="close-modal" onclick="closeModal('validation-detail-modal')">&times;</button>
+            </div>
+            <div id="validation-detail-grid" class="months-grid"></div>
+        </div>
+    </div>
+
+    <!-- Signature Modal -->
+    <div id="signature-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-effect">
+            <h3>Firma Digital</h3>
+            <p>Por favor firma en el recuadro de abajo.</p>
+            <canvas id="signature-pad" width="400" height="200"></canvas>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn-text" onclick="clearSignature()">Borrar</button>
+                <button class="btn-primary" onclick="saveSignature()">Guardar Firma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Support Preview Modal -->
+    <div id="support-preview-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-effect">
+            <div class="modal-header">
+                <h3>Vista Previa de Soporte</h3>
+                <button class="close-modal" onclick="closeModal('support-preview-modal')">&times;</button>
+            </div>
+            <div id="support-preview-content" style="text-align: center; max-height: 70vh; overflow: auto;"></div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODALES DEL MÓDULO DE TESORERÍA -->
+    <!-- ========================================== -->
+
+    <!-- Modal Add Movimiento -->
+    <div id="modal-add-movimiento" class="modal-overlay hidden">
+        <div class="modal-content glass-effect">
+            <div class="modal-header">
+                <h3>Agregar Movimiento</h3>
+                <button class="close-modal" onclick="closeModal('modal-add-movimiento')">&times;</button>
+            </div>
+            <form id="form-add-movimiento" onsubmit="saveMovimiento(event)">
+                <label>Fecha:</label>
+                <input type="date" id="mov-fecha" required>
+                <label>Tipo:</label>
+                <select id="mov-tipo" required>
+                    <option value="ingreso">Ingreso</option>
+                    <option value="egreso">Egreso</option>
+                </select>
+                <label>Concepto:</label>
+                <input type="text" id="mov-concepto" required>
+                <label>Categoría:</label>
+                <select id="mov-categoria" required></select>
+                <label>Monto:</label>
+                <input type="number" id="mov-monto" step="0.01" min="0" required>
+                <label>Forma de Pago:</label>
+                <select id="mov-forma-pago" required>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="otro">Otro</option>
+                </select>
+                <label>Responsable:</label>
+                <input type="text" id="mov-responsable">
+                <label>Observaciones:</label>
+                <textarea id="mov-observaciones" rows="2"></textarea>
+                <button type="submit" class="btn-primary w-full">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Add Categoría -->
+    <div id="modal-add-categoria" class="modal-overlay hidden">
+        <div class="modal-content glass-effect">
+            <div class="modal-header">
+                <h3>Nueva Categoría</h3>
+                <button class="close-modal" onclick="closeModal('modal-add-categoria')">&times;</button>
+            </div>
+            <form id="form-add-categoria" onsubmit="saveCategoria(event)">
+                <label>Nombre:</label>
+                <input type="text" id="cat-nombre" required>
+                <label>Tipo:</label>
+                <select id="cat-tipo" required>
+                    <option value="ingreso">Ingreso</option>
+                    <option value="egreso">Egreso</option>
+                </select>
+                <label>Proyecto:</label>
+                <input type="text" id="cat-proyecto">
+                <label>Ministerio:</label>
+                <input type="text" id="cat-ministerio">
+                <button type="submit" class="btn-primary w-full">Crear</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="main-app.js"></script>
+    <script src="tesoreria.js?v=20241217"></script>
+    <script src="tesoreria-excel.js?v=20241217"></script>
+    <script src="luckysheet-iema.js?v=4"></script>
+    <script src="realtime-collaboration.js?v=4"></script>
+
+    <!-- Jitsi Meet External API -->
+    <script src="https://meet.jit.si/external_api.js"></script>
+    <!-- Video Call Integration -->
+    <script src="jitsi-integration.js?v=1"></script>
+</body>
+
+</html>
